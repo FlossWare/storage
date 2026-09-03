@@ -29,6 +29,16 @@ class ChunkRecord:
     metadata: dict[str, Any] = field(default_factory=dict)
     provenance: dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def doc_id(self) -> str:
+        """Compatibility alias for the former RAG field name."""
+        return self.document_id
+
+    @property
+    def index(self) -> int:
+        """Compatibility alias for the former RAG field name."""
+        return self.sequence
+
 
 @dataclass
 class EmbeddingRecord:
