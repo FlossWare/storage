@@ -47,7 +47,7 @@ The adapter creates its own `loom_storage` schema with document and chunk tables
 
 ### OrientDB provenance
 
-OrientDB stores provenance relationships independently of document text and embeddings:
+OrientDB stores provenance as native graph edges between `LoomEntity` vertices, independently of document text and embeddings:
 
 ```python
 from storage import OrientDBProvenanceStore, ProvenanceRecord
