@@ -85,6 +85,10 @@ def test_postgres_rejects_invalid_dimensions_identifiers_and_vectors():
         store._validate_vector([1.0, 0.0])
     with pytest.raises(ValueError, match="finite numeric"):
         store._validate_vector([1.0, float("nan"), 0.0])
+    with pytest.raises(ValueError, match="non-zero"):
+        store._validate_vector([0.0, 0.0, 0.0])
+    with pytest.raises(ValueError, match="limit"):
+        asyncio.run(store.search([1.0, 0.0, 0.0], limit=True))
 
 
 def test_orientdb_uses_parameterized_sql_and_basic_auth(monkeypatch):
