@@ -60,7 +60,9 @@ def test_postgres_initializes_namespaced_pgvector_tables_and_index():
         store = PostgresStorage(pool, embedding_dimensions=3)
         await store.initialize()
 
-        sql = "\n".join(statement for statement, _ in pool.connection_instance.statements)
+        sql = "\n".join(
+            statement for statement, _ in pool.connection_instance.statements
+        )
         assert "CREATE EXTENSION IF NOT EXISTS vector" in sql
         assert "CREATE SCHEMA IF NOT EXISTS loom_storage" in sql
         assert "loom_storage.documents" in sql
@@ -151,10 +153,10 @@ def test_orientdb_reads_provenance_records(monkeypatch):
                 }
             ).encode()
 
-    monkeypatch.setattr("storage.orientdb.urlopen", lambda request, timeout: FakeResponse())
-    store = OrientDBProvenanceStore(
-        "http://localhost:2480", "loom", "user", "password"
+    monkeypatch.setattr(
+        "storage.orientdb.urlopen", lambda request, timeout: FakeResponse()
     )
+    store = OrientDBProvenanceStore("http://localhost:2480", "loom", "user", "password")
     record = asyncio.run(store.get_provenance("p-2"))
     assert record == ProvenanceRecord(
         id="p-2",
@@ -176,9 +178,7 @@ def test_live_postgres_pgvector_round_trip_when_configured():
         pytest.skip("set FLOSSWARE_STORAGE_POSTGRES_DSN and embedding dimensions")
 
     async def run():
-        store = await PostgresStorage.connect(
-            dsn, embedding_dimensions=int(dimensions)
-        )
+        store = await PostgresStorage.connect(dsn, embedding_dimensions=int(dimensions))
         suffix = uuid.uuid4().hex
         document_id = f"loom-doc-{suffix}"
         chunk_id = f"loom-chunk-{suffix}"
