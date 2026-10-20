@@ -66,3 +66,23 @@ class EmbeddingStore(Protocol):
     async def get_embedding(self, chunk_id: str) -> EmbeddingRecord | None: ...
     async def delete_embedding(self, chunk_id: str) -> bool: ...
     async def search(self, vector: Sequence[float], limit: int = 10) -> list[tuple[str, float]]: ...
+
+
+
+@dataclass
+class ProvenanceRecord:
+    id: str
+    subject_id: str
+    relation: str
+    object_id: str
+    metadata: dict[str, Any] = field(default_factory=dict)
+    created_at: str = ""
+
+
+class ProvenanceStore(Protocol):
+    async def put_provenance(self, record: ProvenanceRecord) -> None: ...
+    async def get_provenance(self, record_id: str) -> ProvenanceRecord | None: ...
+    async def get_provenance_for_subject(
+        self, subject_id: str
+    ) -> list[ProvenanceRecord]: ...
+    async def delete_provenance(self, record_id: str) -> bool: ...
