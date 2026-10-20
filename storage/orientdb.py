@@ -147,9 +147,9 @@ class OrientDBProvenanceStore:
             {"command": command, "parameters": parameters},
             separators=(",", ":"),
         ).encode("utf-8")
-        token = base64.b64encode(
-            f"{self.username}:{self.password}".encode()
-        ).decode("ascii")
+        token = base64.b64encode(f"{self.username}:{self.password}".encode()).decode(
+            "ascii"
+        )
         request = Request(
             url,
             data=body,
