@@ -88,7 +88,7 @@ OrientDB:
 - `FLOSSWARE_STORAGE_ORIENTDB_USERNAME`
 - `FLOSSWARE_STORAGE_ORIENTDB_PASSWORD`
 
-Run with `pip install -e ".[postgres,test]" && pytest -q`. Without those variables the live tests are skipped; passing unit tests alone does not certify a live database deployment.
+Run unit and contract tests with `pip install -e ".[postgres,test]" && pytest -q`. After setting all six variables, run `bash scripts/test-live-backends.sh` to exercise both live services. Without those variables the live tests are skipped; passing unit tests alone does not certify a live database deployment.
 
 ## Contracts
 
