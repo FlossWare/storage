@@ -6,6 +6,7 @@ rewrite tables belonging to the existing FlossWare knowledge corpus.
 
 from __future__ import annotations
 
+import math
 import re
 from typing import Any, Sequence
 
@@ -355,8 +356,11 @@ class PostgresStorage:
             raise ValueError(
                 f"expected {self.embedding_dimensions} vector dimensions, got {len(vector)}"
             )
-        if any(not isinstance(value, (int, float)) for value in vector):
-            raise ValueError("embedding vectors must contain numeric values")
+        if any(
+            not isinstance(value, (int, float)) or not math.isfinite(value)
+            for value in vector
+        ):
+            raise ValueError("embedding vectors must contain finite numeric values")
 
 
 def _chunk_from_row(row: tuple[Any, ...]) -> ChunkRecord:
