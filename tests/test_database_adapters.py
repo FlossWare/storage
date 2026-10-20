@@ -259,3 +259,34 @@ def test_live_orientdb_provenance_round_trip_when_configured():
             await store.delete_provenance(record.id)
 
     asyncio.run(run())
+
+
+def test_orientdb_initializes_native_graph_classes_and_indexes(monkeypatch):
+    commands = []
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def read(self):
+            return b'{"result": 1}'
+
+    def fake_urlopen(request, timeout):
+        payload = json.loads(request.data)
+        commands.append(payload["command"])
+        return FakeResponse()
+
+    monkeypatch.setattr("storage.orientdb.urlopen", fake_urlopen)
+    store = OrientDBProvenanceStore(
+        "http://localhost:2480", "loom", "user", "password"
+    )
+    asyncio.run(store.initialize())
+
+    sql = "\\n".join(commands)
+    assert "CREATE CLASS LoomEntity IF NOT EXISTS EXTENDS V" in sql
+    assert "CREATE CLASS LoomProvenance IF NOT EXISTS EXTENDS E" in sql
+    assert "LoomEntity_entityId" in sql
+    assert "LoomProvenance_recordId" in sql
