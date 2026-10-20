@@ -74,7 +74,10 @@ class PostgresStorage:
         max_size: int = 10,
     ) -> PostgresStorage:
         """Create a configured async connection pool using optional drivers."""
-        if not isinstance(embedding_dimensions, int) or not 1 <= embedding_dimensions <= 2000:
+        if (
+            not isinstance(embedding_dimensions, int)
+            or not 1 <= embedding_dimensions <= 2000
+        ):
             raise ValueError("embedding_dimensions must be between 1 and 2000")
         _identifier(schema, "schema")
         _identifier(
