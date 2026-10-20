@@ -351,7 +351,7 @@ class PostgresStorage:
         self, vector: Sequence[float], limit: int = 10
     ) -> list[tuple[str, float]]:
         self._validate_vector(vector)
-        if not isinstance(limit, int) or limit < 1:
+        if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1:
             raise ValueError("limit must be a positive integer")
         async with self.pool.connection() as connection:
             cursor = await connection.execute(
@@ -378,6 +378,8 @@ class PostgresStorage:
             for value in vector
         ):
             raise ValueError("embedding vectors must contain finite numeric values")
+        if not any(value != 0 for value in vector):
+            raise ValueError("cosine similarity requires a non-zero vector")
 
 
 def _chunk_from_row(row: tuple[Any, ...]) -> ChunkRecord:
