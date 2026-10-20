@@ -22,7 +22,6 @@ def test_document_chunk_and_embedding_lifecycle():
     asyncio.run(run())
 
 
-
 def test_embedding_validation_and_search_contract():
     import pytest
 
@@ -52,7 +51,6 @@ def test_embedding_validation_and_search_contract():
             await store.search([float("inf"), 0.0])
 
     asyncio.run(run())
-
 
 
 def test_delete_document_removes_chunks_even_when_chunk_ids_are_stale():
