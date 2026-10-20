@@ -6,6 +6,7 @@ rewrite tables belonging to the existing FlossWare knowledge corpus.
 
 from __future__ import annotations
 
+import hashlib
 import math
 import re
 from typing import Any, Sequence
@@ -70,6 +71,13 @@ class PostgresStorage:
         max_size: int = 10,
     ) -> "PostgresStorage":
         """Create a configured async connection pool using optional drivers."""
+        if not isinstance(embedding_dimensions, int) or not 1 <= embedding_dimensions <= 2000:
+            raise ValueError("embedding_dimensions must be between 1 and 2000")
+        _identifier(schema, "schema")
+        _identifier(
+            embedding_table or f"embeddings_{embedding_dimensions}",
+            "embedding_table",
+        )
         try:
             from pgvector.psycopg import register_vector_async
             from psycopg_pool import AsyncConnectionPool
@@ -100,7 +108,8 @@ class PostgresStorage:
         """Create the adapter-owned tables and cosine index idempotently."""
         schema = self.schema
         embedding_table = self.embedding_table
-        index_name = _identifier(f"idx_{embedding_table}_cosine", "index name")
+        index_suffix = hashlib.sha256(embedding_table.encode("utf-8")).hexdigest()[:16]
+        index_name = f"idx_{index_suffix}_cosine"
         async with self.pool.connection() as connection:
             await connection.execute("CREATE EXTENSION IF NOT EXISTS vector")
             await connection.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
@@ -357,7 +366,9 @@ class PostgresStorage:
                 f"expected {self.embedding_dimensions} vector dimensions, got {len(vector)}"
             )
         if any(
-            not isinstance(value, (int, float)) or not math.isfinite(value)
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
             for value in vector
         ):
             raise ValueError("embedding vectors must contain finite numeric values")
