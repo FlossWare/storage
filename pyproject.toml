@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "storage"
-version = "0.1.0"
+version = "0.1"
 description = "Storage contracts and replaceable persistence adapters for FlossWare"
 requires-python = ">=3.10"
 readme = "README.md"
