@@ -23,9 +23,10 @@ _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class OrientDBProvenanceStore:
-    """Persist provenance records in an OrientDB 3.2 database over REST."""
+    """Persist provenance as native OrientDB vertices and edges over REST."""
 
-    _CLASS = "LoomProvenance"
+    _VERTEX_CLASS = "LoomEntity"
+    _EDGE_CLASS = "LoomProvenance"
 
     def __init__(
         self,
@@ -51,55 +52,93 @@ class OrientDBProvenanceStore:
         self.timeout = timeout
 
     async def initialize(self) -> None:
-        """Create the provenance class, properties, and lookup indexes."""
-        await self._command(f"CREATE CLASS {self._CLASS} IF NOT EXISTS")
+        """Create provenance vertices, edges, properties, and lookup indexes."""
+        await self._command(
+            f"CREATE CLASS {self._VERTEX_CLASS} IF NOT EXISTS EXTENDS V"
+        )
+        await self._command(
+            f"CREATE PROPERTY {self._VERTEX_CLASS}.entityId STRING IF NOT EXISTS"
+        )
+        await self._command(
+            f"CREATE INDEX {self._VERTEX_CLASS}_entityId IF NOT EXISTS "
+            f"ON {self._VERTEX_CLASS} (entityId) UNIQUE"
+        )
+        await self._command(f"CREATE CLASS {self._EDGE_CLASS} IF NOT EXISTS EXTENDS E")
         properties = {
             "recordId": "STRING",
-            "subjectId": "STRING",
             "relation": "STRING",
-            "objectId": "STRING",
             "metadata": "EMBEDDEDMAP",
             "createdAt": "STRING",
         }
         for name, kind in properties.items():
             await self._command(
-                f"CREATE PROPERTY {self._CLASS}.{name} {kind} IF NOT EXISTS"
+                f"CREATE PROPERTY {self._EDGE_CLASS}.{name} {kind} IF NOT EXISTS"
             )
         await self._command(
-            f"CREATE INDEX {self._CLASS}_recordId IF NOT EXISTS "
-            f"ON {self._CLASS} (recordId) UNIQUE"
-        )
-        await self._command(
-            f"CREATE INDEX {self._CLASS}_subjectId IF NOT EXISTS "
-            f"ON {self._CLASS} (subjectId) NOTUNIQUE"
+            f"CREATE INDEX {self._EDGE_CLASS}_recordId IF NOT EXISTS "
+            f"ON {self._EDGE_CLASS} (recordId) UNIQUE"
         )
 
     async def put_provenance(self, record: ProvenanceRecord) -> None:
         created_at = record.created_at or datetime.now(timezone.utc).isoformat()
+        for entity_id in (record.subject_id, record.object_id):
+            await self._command(
+                f"UPDATE {self._VERTEX_CLASS} SET entityId = :entityId "
+                "UPSERT WHERE entityId = :entityId",
+                {"entityId": entity_id},
+            )
+
+        existing = await self.get_provenance(record.id)
+        parameters = {
+            "recordId": record.id,
+            "subjectId": record.subject_id,
+            "relation": record.relation,
+            "objectId": record.object_id,
+            "metadata": record.metadata,
+            "createdAt": created_at,
+        }
+        if existing is not None and (
+            existing.subject_id != record.subject_id
+            or existing.object_id != record.object_id
+        ):
+            await self.delete_provenance(record.id)
+            existing = None
+
+        if existing is not None:
+            await self._command(
+                f"""
+                UPDATE {self._EDGE_CLASS}
+                SET relation = :relation,
+                    metadata = :metadata,
+                    createdAt = :createdAt
+                WHERE recordId = :recordId
+                """,
+                parameters,
+            )
+            return
+
         await self._command(
             f"""
-            UPDATE {self._CLASS}
+            CREATE EDGE {self._EDGE_CLASS}
+            FROM (SELECT FROM {self._VERTEX_CLASS} WHERE entityId = :subjectId)
+            TO (SELECT FROM {self._VERTEX_CLASS} WHERE entityId = :objectId)
             SET recordId = :recordId,
-                subjectId = :subjectId,
                 relation = :relation,
-                objectId = :objectId,
                 metadata = :metadata,
                 createdAt = :createdAt
-            UPSERT WHERE recordId = :recordId
             """,
-            {
-                "recordId": record.id,
-                "subjectId": record.subject_id,
-                "relation": record.relation,
-                "objectId": record.object_id,
-                "metadata": record.metadata,
-                "createdAt": created_at,
-            },
+            parameters,
         )
 
     async def get_provenance(self, record_id: str) -> ProvenanceRecord | None:
         response = await self._command(
-            f"SELECT FROM {self._CLASS} WHERE recordId = :recordId LIMIT 1",
+            f"""
+            SELECT recordId, out.entityId AS subjectId, relation,
+                   in.entityId AS objectId, metadata, createdAt
+            FROM {self._EDGE_CLASS}
+            WHERE recordId = :recordId
+            LIMIT 1
+            """,
             {"recordId": record_id},
         )
         rows = _result_rows(response)
@@ -112,8 +151,10 @@ class OrientDBProvenanceStore:
             raise ValueError("limit must be between 1 and 10000")
         response = await self._command(
             f"""
-            SELECT FROM {self._CLASS}
-            WHERE subjectId = :subjectId
+            SELECT recordId, out.entityId AS subjectId, relation,
+                   in.entityId AS objectId, metadata, createdAt
+            FROM {self._EDGE_CLASS}
+            WHERE out.entityId = :subjectId
             ORDER BY createdAt, recordId
             LIMIT {limit}
             """,
@@ -123,7 +164,7 @@ class OrientDBProvenanceStore:
 
     async def delete_provenance(self, record_id: str) -> bool:
         response = await self._command(
-            f"DELETE FROM {self._CLASS} WHERE recordId = :recordId",
+            f"DELETE EDGE {self._EDGE_CLASS} WHERE recordId = :recordId",
             {"recordId": record_id},
         )
         if isinstance(response, int):
@@ -174,7 +215,6 @@ class OrientDBProvenanceStore:
             return json.loads(raw.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise RuntimeError("OrientDB returned invalid JSON") from exc
-
 
 def _result_rows(response: Any) -> list[dict[str, Any]]:
     if isinstance(response, dict):
