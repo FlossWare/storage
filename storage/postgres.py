@@ -9,7 +9,8 @@ from __future__ import annotations
 import hashlib
 import math
 import re
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from .types import ChunkRecord, DocumentRecord, EmbeddingRecord
 
@@ -69,7 +70,7 @@ class PostgresStorage:
         embedding_table: str | None = None,
         min_size: int = 1,
         max_size: int = 10,
-    ) -> "PostgresStorage":
+    ) -> PostgresStorage:
         """Create a configured async connection pool using optional drivers."""
         if not isinstance(embedding_dimensions, int) or not 1 <= embedding_dimensions <= 2000:
             raise ValueError("embedding_dimensions must be between 1 and 2000")
