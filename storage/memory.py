@@ -33,7 +33,6 @@ class InMemoryStorage:
             for chunk in self.chunks.values()
             if chunk.document_id == document_id
         }
-        chunk_ids.update(document.chunk_ids)
         for chunk_id in chunk_ids:
             self.chunks.pop(chunk_id, None)
             self.embeddings.pop(chunk_id, None)
