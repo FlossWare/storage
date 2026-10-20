@@ -80,7 +80,8 @@ class OrientDBProvenanceStore:
         await self._command(
             f"""
             UPDATE {self._CLASS}
-            SET subjectId = :subjectId,
+            SET recordId = :recordId,
+                subjectId = :subjectId,
                 relation = :relation,
                 objectId = :objectId,
                 metadata = :metadata,
