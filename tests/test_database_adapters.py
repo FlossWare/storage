@@ -280,9 +280,7 @@ def test_orientdb_initializes_native_graph_classes_and_indexes(monkeypatch):
         return FakeResponse()
 
     monkeypatch.setattr("storage.orientdb.urlopen", fake_urlopen)
-    store = OrientDBProvenanceStore(
-        "http://localhost:2480", "loom", "user", "password"
-    )
+    store = OrientDBProvenanceStore("http://localhost:2480", "loom", "user", "password")
     asyncio.run(store.initialize())
 
     sql = "\\n".join(commands)
