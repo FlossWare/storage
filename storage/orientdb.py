@@ -216,6 +216,7 @@ class OrientDBProvenanceStore:
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise RuntimeError("OrientDB returned invalid JSON") from exc
 
+
 def _result_rows(response: Any) -> list[dict[str, Any]]:
     if isinstance(response, dict):
         rows = response.get("result", [])
