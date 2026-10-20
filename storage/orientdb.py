@@ -19,7 +19,6 @@ from urllib.request import Request, urlopen
 
 from .types import ProvenanceRecord
 
-
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -149,7 +148,7 @@ class OrientDBProvenanceStore:
             separators=(",", ":"),
         ).encode("utf-8")
         token = base64.b64encode(
-            f"{self.username}:{self.password}".encode("utf-8")
+            f"{self.username}:{self.password}".encode()
         ).decode("ascii")
         request = Request(
             url,
