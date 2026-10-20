@@ -57,8 +57,12 @@ class InMemoryStorage:
     async def delete_embedding(self, chunk_id: str) -> bool:
         return self.embeddings.pop(chunk_id, None) is not None
 
-    async def search(self, vector: Sequence[float], limit: int = 10) -> list[tuple[str, float]]:
-        scored = [(e.chunk_id, _cosine(vector, e.vector)) for e in self.embeddings.values()]
+    async def search(
+        self, vector: Sequence[float], limit: int = 10
+    ) -> list[tuple[str, float]]:
+        scored = [
+            (e.chunk_id, _cosine(vector, e.vector)) for e in self.embeddings.values()
+        ]
         scored.sort(key=lambda pair: (-pair[1], pair[0]))
         return scored[:limit]
 
