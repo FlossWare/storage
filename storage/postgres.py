@@ -14,7 +14,6 @@ from typing import Any
 
 from .types import ChunkRecord, DocumentRecord, EmbeddingRecord
 
-
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
