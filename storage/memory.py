@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Sequence
+from collections.abc import Sequence
 
 from .types import ChunkRecord, DocumentRecord, EmbeddingRecord
 
@@ -26,7 +26,14 @@ class InMemoryStorage:
         document = self.documents.pop(document_id, None)
         if document is None:
             return False
-        for chunk_id in list(document.chunk_ids):
+        # Match PostgreSQL's ON DELETE CASCADE semantics using the chunk's
+        # canonical document_id, not the potentially stale denormalized chunk_ids.
+        chunk_ids = {
+            chunk.id
+            for chunk in self.chunks.values()
+            if chunk.document_id == document_id
+        }
+        for chunk_id in chunk_ids:
             self.chunks.pop(chunk_id, None)
             self.embeddings.pop(chunk_id, None)
         return True
@@ -49,6 +56,7 @@ class InMemoryStorage:
         return existed
 
     async def put_embedding(self, embedding: EmbeddingRecord) -> None:
+        _validate_vector(embedding.vector)
         self.embeddings[embedding.chunk_id] = embedding
 
     async def get_embedding(self, chunk_id: str) -> EmbeddingRecord | None:
@@ -57,16 +65,40 @@ class InMemoryStorage:
     async def delete_embedding(self, chunk_id: str) -> bool:
         return self.embeddings.pop(chunk_id, None) is not None
 
-    async def search(self, vector: Sequence[float], limit: int = 10) -> list[tuple[str, float]]:
-        scored = [(e.chunk_id, _cosine(vector, e.vector)) for e in self.embeddings.values()]
+    async def search(
+        self, vector: Sequence[float], limit: int = 10
+    ) -> list[tuple[str, float]]:
+        _validate_vector(vector)
+        if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1:
+            raise ValueError("limit must be a positive integer")
+        for embedding in self.embeddings.values():
+            if len(embedding.vector) != len(vector):
+                raise ValueError(
+                    "query vector dimensions must match stored embedding dimensions"
+                )
+        scored = [
+            (e.chunk_id, _cosine(vector, e.vector)) for e in self.embeddings.values()
+        ]
         scored.sort(key=lambda pair: (-pair[1], pair[0]))
         return scored[:limit]
 
 
+def _validate_vector(vector: Sequence[float]) -> None:
+    if not vector:
+        raise ValueError("embedding vectors must not be empty")
+    if any(
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+        for value in vector
+    ):
+        raise ValueError("embedding vectors must contain finite numeric values")
+    if not any(value != 0 for value in vector):
+        raise ValueError("cosine similarity requires a non-zero vector")
+
+
 def _cosine(a: Sequence[float], b: Sequence[float]) -> float:
-    if not a or not b:
-        return 0.0
     dot = sum(x * y for x, y in zip(a, b))
     na = math.sqrt(sum(x * x for x in a))
     nb = math.sqrt(sum(y * y for y in b))
-    return dot / (na * nb) if na and nb else 0.0
+    return dot / (na * nb)
