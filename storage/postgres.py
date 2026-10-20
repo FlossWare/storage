@@ -49,7 +49,10 @@ class PostgresStorage:
         schema: str = "loom_storage",
         embedding_table: str | None = None,
     ) -> None:
-        if not isinstance(embedding_dimensions, int) or not 1 <= embedding_dimensions <= 2000:
+        if (
+            not isinstance(embedding_dimensions, int)
+            or not 1 <= embedding_dimensions <= 2000
+        ):
             raise ValueError("embedding_dimensions must be between 1 and 2000")
         self.pool = pool
         self.schema = _identifier(schema, "schema")
