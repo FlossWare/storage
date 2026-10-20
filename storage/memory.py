@@ -26,7 +26,15 @@ class InMemoryStorage:
         document = self.documents.pop(document_id, None)
         if document is None:
             return False
-        for chunk_id in list(document.chunk_ids):
+        # Match PostgreSQL's ON DELETE CASCADE semantics using the chunk's
+        # canonical document_id, not the potentially stale denormalized chunk_ids.
+        chunk_ids = {
+            chunk.id
+            for chunk in self.chunks.values()
+            if chunk.document_id == document_id
+        }
+        chunk_ids.update(document.chunk_ids)
+        for chunk_id in chunk_ids:
             self.chunks.pop(chunk_id, None)
             self.embeddings.pop(chunk_id, None)
         return True
