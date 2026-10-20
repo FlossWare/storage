@@ -71,7 +71,6 @@ class EmbeddingStore(Protocol):
     ) -> list[tuple[str, float]]: ...
 
 
-
 @dataclass
 class ProvenanceRecord:
     id: str
